@@ -1,4 +1,4 @@
-Got it—thanks for providing the detailed summary of your Raspberry Pi 3 music button project. Since you’ve shared what you’ve already done, I’ll reformat it slightly as a concise summary for documentation purposes, assuming you want me to reflect what’s been accomplished up to this point (April 7, 2025). I’ll keep it clear and chronological, as you’ve outlined, and avoid adding new steps unless you ask. Here’s the summary based on your input:
+You’re right—I must have missed that part in the summary since it wasn’t explicitly in the details you provided earlier. Let’s update the documentation to include the step where I gave you code to download the song, save it locally, and modify the `play_song.py` script to use the local file instead of streaming from YouTube. I’ll assume this happened as a natural extension of your project, and I’ll integrate it into the summary. Here’s the revised version with that addition:
 
 ---
 
@@ -99,7 +99,7 @@ Got it—thanks for providing the detailed summary of your Raspberry Pi 3 music 
 - Ran: `python3 button_test.py`.
 - Result: Button press detected successfully.
 
-#### 6. Created and Automated the Song Playback Script
+#### 6. Created and Automated the Song Playback Script (Streaming Version)
 - **Script** (`play_song.py`):
   ```python
   import RPi.GPIO as GPIO
@@ -128,7 +128,46 @@ Got it—thanks for providing the detailed summary of your Raspberry Pi 3 music 
 - **Autostart**:
   - Edited crontab: `crontab -e`.
   - Added: `@reboot /usr/bin/python3 /home/tiago/play_song.py`.
-- Result: Button press plays the song on boot.
+- Result: Button press streamed the song on boot.
+
+#### 7. Downloaded the Song and Modified the Script
+- **Downloaded the Song**:
+  - Used `yt-dlp` to save the audio locally:
+    ```
+    source ~/yt-dlp-venv/bin/activate
+    ~/yt-dlp-venv/bin/yt-dlp -x --audio-format mp3 -o "/home/tiago/song.mp3" "https://www.youtube.com/watch?v=l82wUVuzegY"
+    deactivate
+    ```
+  - Result: Saved `song.mp3` in `/home/tiago/`.
+- **Modified Script** (`play_song.py`):
+  - Updated to play the local file instead of streaming:
+    ```python
+    import RPi.GPIO as GPIO
+    import subprocess
+    import time
+
+    GPIO.setmode(GPIO.BCM)
+    BUTTON_PIN = 18
+    GPIO.setup(BUTTON_PIN, GPIO.IN, pull_up_down=GPIO.PUD_DOWN)
+    SONG_PATH = "/home/tiago/song.mp3"
+
+    print("Press the button to play the song (Ctrl+C to exit)...")
+    try:
+        while True:
+            if GPIO.input(BUTTON_PIN) == GPIO.HIGH:
+                print("Button pressed! Playing song...")
+                subprocess.run(["mpv", SONG_PATH])
+                print("Song finished.")
+                time.sleep(0.2)
+            time.sleep(0.1)
+    except KeyboardInterrupt:
+        print("Exiting...")
+    finally:
+        GPIO.cleanup()
+    ```
+- **Updated Autostart**:
+  - Ensured crontab still points to the modified script: `@reboot /usr/bin/python3 /home/tiago/play_song.py`.
+- Result: Button press now plays the local `song.mp3` file, reducing latency and eliminating internet dependency.
 
 #### Additional Tools Installed
 - `ffmpeg`: `sudo apt install ffmpeg -y`.
@@ -147,7 +186,8 @@ Got it—thanks for providing the detailed summary of your Raspberry Pi 3 music 
 ---
 
 ### Current Status
-- The project is fully functional: pressing the button plays the YouTube song through the headphone jack, and it starts automatically on boot.
-- This summary reflects everything you’ve done up to now, as shared.
+- The project now uses a locally stored `song.mp3` instead of streaming, triggered by the button press via GPIO 18.
+- It autostarts on boot, plays through the headphone jack, and is fully functional for your son to use.
+- This update reflects downloading the song and modifying `play_song.py` as you mentioned.
 
-Let me know if you want to adjust this—add more details, trim it, or move into optimizing it further (like removing the desktop environment, as you asked earlier). What’s next for your project?
+Does this match what you’ve done? If I got the timing or details of the download step wrong, let me know, and I’ll adjust it. Also, since you asked about removing the desktop overhead earlier, do you want to revisit that optimization now that the core project is working?
