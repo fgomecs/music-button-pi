@@ -294,3 +294,11 @@ finally:
 
 
 >>>>>>> d383860 (Updated README with detailed project summary)
+
+## Song Skipping
+- Press button to play or skip to the next song instantly.
+- Songs: `song.mp3`, `song2.mp3`, `song3.mp3`, `song4.mp3`, `song5.mp3`.
+- Master volume set to 80%:
+  ```bash
+  amixer set Master 80%
+  sudo alsactl store
