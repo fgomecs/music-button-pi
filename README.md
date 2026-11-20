@@ -30,7 +30,9 @@ flowchart LR
         P5["Pin 5 · GPIO3 SCL"]
         P6["Pin 6 · GND"]
         P12["Pin 12 · GPIO18"]
-        PL["LED GPIOs<br/>(LED_PINS in led_spectrum.py)"]
+        PG["Pins 29,31,33,35<br/>GPIO 5,6,13,19"]
+        PY["Pins 37,36<br/>GPIO 26,16"]
+        PR["Pins 38,40<br/>GPIO 20,21"]
         JACK[3.5mm headphone jack]
     end
     BTN[Push button] --- P1
@@ -41,9 +43,22 @@ flowchart LR
     OLED --- P5
     OLED --- P1
     OLED --- P6
-    PL --> LEDS["8 LEDs: 4 green · 2 yellow · 2 red<br/>(each with resistor to GND)"]
+    PG --> LG["4 green LEDs"]
+    PY --> LY["2 yellow LEDs"]
+    PR --> LR["2 red LEDs"]
+    LG & LY & LR --> GND["resistor → GND"]
     JACK --> HP[Headphones]
 ```
+
+### LED pins (BCM, from `LED_PINS` in `led_spectrum.py`)
+
+| LED | Color | GPIO | Physical pin |
+|---|---|---|---|
+| 1–4 | green | 5, 6, 13, 19 | 29, 31, 33, 35 |
+| 5–6 | yellow | 26, 16 | 37, 36 |
+| 7–8 | red | 20, 21 | 38, 40 |
+
+Each LED: GPIO → LED → resistor → GND. While a song plays, a light wave runs green → red and back.
 
 ## Files
 
@@ -117,6 +132,7 @@ flowchart LR
 | Name on screen ≠ song playing | `SONGS` and `SONG_NAMES` out of sync, or a local copy in `play_song.py` |
 | No sound | `pactl set-default-sink alsa_output.platform-bcm2835_audio.stereo-fallback` |
 | Nothing at boot | `crontab -l` should show `@reboot /home/tiago/music-button-pi/start_music_player.sh`; check `music_player.log` |
+| `git push` → Permission denied (publickey) | Add `~/.ssh/id_ed25519.pub` at github.com/settings/keys |
 
 ## Software
 
