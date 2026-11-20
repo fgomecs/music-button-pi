@@ -40,11 +40,24 @@ SAFETY_MB = 500         # always leave this much free on the SD card
 README_START = "<!-- SONGS:START -->"
 README_END = "<!-- SONGS:END -->"
 
+# PuTTY/locale may not be UTF-8: never crash on printing or reading names
+for _st in (sys.stdin, sys.stdout, sys.stderr):
+    try:
+        _st.reconfigure(encoding="utf-8", errors="replace")
+    except Exception:
+        pass
+
 ENV = dict(os.environ)
 ENV["PATH"] = os.path.join(HOME, ".deno", "bin") + os.pathsep + ENV.get("PATH", "")
 
 
 # ---------- helpers ----------
+def clean_url(url):
+    """Drop YouTube tracking junk (&pp=, &si=, ...) and keep just the video id."""
+    m = re.search(r"(?:v=|youtu\.be/|shorts/)([\w-]{11})", url)
+    return f"https://www.youtube.com/watch?v={m.group(1)}" if m else url
+
+
 def ask(prompt, default=""):
     try:
         ans = input(prompt).strip()
@@ -95,7 +108,7 @@ def probe(url):
             stdout=subprocess.PIPE, stderr=subprocess.PIPE)
     if r.returncode != 0:
         err = (r.stderr.strip().splitlines() or ["unknown error"])[-1]
-        print(f"  ✗ {url}\n    {err}")
+        print(f"  X {url}\n    {err}")
         return None
     info = json.loads(r.stdout)
     dur = info.get("duration") or 0
@@ -190,7 +203,7 @@ def main():
             if not m:
                 print("  (no URL on that line, skipped)")
                 continue
-            url, name = m.group(1), m.group(2).strip()
+            url, name = clean_url(m.group(1)), m.group(2).strip()
             if len(name) > 1 and name[0] == name[-1] == '"':
                 name = name[1:-1]
             urls.append(url)
@@ -214,14 +227,14 @@ def main():
     peak = total_mp3 + max(s["src"] for s in songs)  # one temp file at a time
     for s in songs:
         s["name"] = given_names.get(s["url"])
-    print(f"\n{'#':>2}  {'Length':>6}  {'≈ MB':>6}  Name / YouTube title")
+    print(f"\n{'#':>2}  {'Length':>6}  {'~ MB':>6}  Name / YouTube title")
     for i, s in enumerate(songs, 1):
         label = s["name"] or f"(no name) {s['title']}"
         print(f"{i:>2}  {fmt_time(s['duration']):>6}  {mb(s['mp3']):6.1f}  {label[:60]}")
-    print(f"\nTotal ≈ {mb(total_mp3):.1f} MB  (peak while downloading ≈ {mb(peak):.1f} MB)")
+    print(f"\nTotal ~ {mb(total_mp3):.1f} MB  (peak while downloading ~ {mb(peak):.1f} MB)")
     print(f"Free on SD card: {mb(free):.0f} MB   (keeping {SAFETY_MB} MB spare)")
     fits = mb(peak) + SAFETY_MB <= mb(free)
-    print("✅ FITS" if fits else "❌ DOES NOT FIT. Remove some URLs or free up space.")
+    print("OK - FITS" if fits else "NO - DOES NOT FIT. Remove some URLs or free up space.")
     if check_only or not fits:
         return
     if not yes("\nAdd these songs?"):
@@ -243,15 +256,15 @@ def main():
     for s, n in zip(songs, next_numbers(len(songs))):
         fn = f"song{n}.mp3"
         path = os.path.join(PROJECT, fn)
-        print(f"\nDownloading {s['name']} → {fn}")
+        print(f"\nDownloading {s['name']} -> {fn}")
         r = run([YTDLP, "-x", "--audio-format", "mp3", "--no-playlist", "--no-warnings",
                  "-o", os.path.join(PROJECT, f"song{n}.%(ext)s"), s["url"]])
         if r.returncode == 0 and os.path.exists(path):
-            print(f"  ✓ {mb(os.path.getsize(path)):.1f} MB")
+            print(f"  OK {mb(os.path.getsize(path)):.1f} MB")
             added.append((path, s["name"]))
             sources[fn] = s["url"]
         else:
-            print("  ✗ failed, skipped")
+            print("  X failed, skipped")
 
     if not added:
         sys.exit("\nNo songs downloaded; nothing changed.")
@@ -268,7 +281,7 @@ def main():
     # sanity check
     _, s2, n2 = load_config()
     assert len(s2) == len(n2), "config.py SONGS/SONG_NAMES mismatch after write!"
-    print(f"\n✓ Added {len(added)} song(s). Playlist now has {len(s2)} songs:")
+    print(f"\nOK Added {len(added)} song(s). Playlist now has {len(s2)} songs:")
     for i, n in enumerate(n2, 1):
         print(f"  {i:>2}. {n}")
 
@@ -280,7 +293,7 @@ def main():
         run(["git", "add", "config.py", "README.md", "song_sources.json"])
         run(["git", "commit", "-q", "-m", msg])
         r = run(["git", "push", "-q", "origin", "HEAD"])
-        print("  ✓ pushed" if r.returncode == 0 else "  ✗ push failed (run: git push)")
+        print("  OK pushed" if r.returncode == 0 else "  X push failed (run: git push)")
 
     if yes("\nReboot now so the button picks up the new songs?"):
         run(["sudo", "reboot"])
