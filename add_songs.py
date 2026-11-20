@@ -3,7 +3,7 @@
 add_songs.py - add several YouTube songs to the music button in one go.
 
 Usage:
-    python3 add_songs.py                 # paste URLs when asked
+    python3 add_songs.py                 # paste "URL Name" lines when asked
     python3 add_songs.py URL1 URL2 ...   # or pass them as arguments
     python3 add_songs.py --check URL...  # only check size / free space, change nothing
 
@@ -176,14 +176,26 @@ def main():
     args = sys.argv[1:]
     check_only = "--check" in args
     urls = [a for a in args if a.startswith("http")]
+    given_names = {}
 
     if not urls:
-        print("Paste YouTube URLs, one per line. Empty line when done:")
+        print("Paste one song per line:  URL Name   (name optional)")
+        print("  e.g. https://www.youtube.com/watch?v=abc123 La Patita")
+        print("Empty line when done:")
         while True:
             line = ask("> ")
             if not line:
                 break
-            urls += [u for u in line.split() if u.startswith("http")]
+            m = re.match(r"\s*(https?://\S+)\s*[|,;\t-]*\s*(.*)", line)
+            if not m:
+                print("  (no URL on that line, skipped)")
+                continue
+            url, name = m.group(1), m.group(2).strip()
+            if len(name) > 1 and name[0] == name[-1] == '"':
+                name = name[1:-1]
+            urls.append(url)
+            if name:
+                given_names[url] = name
     urls = list(dict.fromkeys(urls))  # drop duplicates, keep order
     if not urls:
         sys.exit("No URLs given.")
@@ -200,9 +212,12 @@ def main():
     free = shutil.disk_usage(PROJECT).free
     total_mp3 = sum(s["mp3"] for s in songs)
     peak = total_mp3 + max(s["src"] for s in songs)  # one temp file at a time
-    print(f"\n{'#':>2}  {'Length':>6}  {'≈ MB':>6}  Title")
+    for s in songs:
+        s["name"] = given_names.get(s["url"])
+    print(f"\n{'#':>2}  {'Length':>6}  {'≈ MB':>6}  Name / YouTube title")
     for i, s in enumerate(songs, 1):
-        print(f"{i:>2}  {fmt_time(s['duration']):>6}  {mb(s['mp3']):6.1f}  {s['title'][:60]}")
+        label = s["name"] or f"(no name) {s['title']}"
+        print(f"{i:>2}  {fmt_time(s['duration']):>6}  {mb(s['mp3']):6.1f}  {label[:60]}")
     print(f"\nTotal ≈ {mb(total_mp3):.1f} MB  (peak while downloading ≈ {mb(peak):.1f} MB)")
     print(f"Free on SD card: {mb(free):.0f} MB   (keeping {SAFETY_MB} MB spare)")
     fits = mb(peak) + SAFETY_MB <= mb(free)
@@ -212,10 +227,12 @@ def main():
     if not yes("\nAdd these songs?"):
         return
 
-    # 2. names
-    print("\nName shown on the screen (Enter = keep YouTube title):")
-    for s in songs:
-        s["name"] = ask(f"  {s['title'][:55]}\n  name> ", default=s["title"])
+    # 2. names (only for lines pasted without one)
+    missing = [s for s in songs if not s["name"]]
+    if missing:
+        print("\nName shown on the screen (Enter = keep YouTube title):")
+        for s in missing:
+            s["name"] = ask(f"  {s['title'][:55]}\n  name> ", default=s["title"])
 
     # 3. download
     pin, cfg_songs, cfg_names = load_config()

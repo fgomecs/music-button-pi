@@ -104,18 +104,23 @@ python3 add_songs.py
 
 ```mermaid
 flowchart LR
-    A[Paste URLs] --> B[Update yt-dlp]
+    A[Paste URL + Name rows] --> B[Update yt-dlp]
     B --> C[Read title + length<br/>estimate MB each]
     C --> D{Fits on SD card?}
     D -- no --> X[Stop, nothing changed]
-    D -- yes --> E[Ask display name<br/>for each]
+    D -- yes --> E[Ask name only if<br/>missing]
     E --> F[Download songN.mp3]
     F --> G[Append to config.py<br/>+ README table + song_sources.json]
     G --> H[git push?]
     H --> I[Reboot?]
 ```
 
-- Paste URLs one per line, empty line to finish (or pass them as arguments).
+- Paste one song per line as `URL Name` (several lines at once is fine), then an empty line:
+  ```
+  https://www.youtube.com/watch?v=abc123 La Patita
+  https://www.youtube.com/watch?v=def456 | Soy un Pez!
+  ```
+  `|`, comma or tab between URL and name also work. Lines without a name get asked later.
 - `python3 add_songs.py --check URL1 URL2` only reports size and free space.
 - Size estimate assumes ~160 kbps mp3 and keeps 500 MB free; songs that fail to download are skipped.
 - `config.py.bak` holds the previous config.
