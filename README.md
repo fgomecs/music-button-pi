@@ -76,22 +76,51 @@ Songs (`song*.mp3`) are **not** in the repo (copyrighted audio). Re-download the
 
 ## Song list (play order)
 
-| # | File | Name |
-|---|---|---|
-| 1 | song11.mp3 | Capi Miau! |
-| 2 | song10.mp3 | Cacho Muchacho |
-| 3 | song9.mp3 | Abuelito dime tu |
-| 4 | song6.mp3 | Las Vocales |
-| 5 | song7.mp3 | I'm an Octupus |
-| 6 | song8.mp3 | This little light |
-| 7 | song2.mp3 | Here Comes Santa |
-| 8 | song3.mp3 | Caminito de la Escuela |
-| 9 | song4.mp3 | La Patita |
-| 10 | song5.mp3 | Soy un Pez! |
-| 11 | song.mp3 | El Chorrito |
-| 12 | song12.mp3 | Daniel Otono — https://www.youtube.com/watch?v=5x5fwwxps3M |
+<!-- SONGS:START -->
+| # | File | Name | Source |
+|---|---|---|---|
+| 1 | song11.mp3 | Capi Miau! |  |
+| 2 | song10.mp3 | Cacho Muchacho |  |
+| 3 | song9.mp3 | Abuelito dime tu |  |
+| 4 | song6.mp3 | Las Vocales |  |
+| 5 | song7.mp3 | I'm an Octupus |  |
+| 6 | song8.mp3 | This little light |  |
+| 7 | song2.mp3 | Here Comes Santa |  |
+| 8 | song3.mp3 | Caminito de la Escuela |  |
+| 9 | song4.mp3 | La Patita |  |
+| 10 | song5.mp3 | Soy un Pez! |  |
+| 11 | song.mp3 | El Chorrito | https://www.youtube.com/watch?v=l82wUVuzegY |
+| 12 | song12.mp3 | Daniel Otono | https://www.youtube.com/watch?v=5x5fwwxps3M |
+<!-- SONGS:END -->
 
-## Adding a new song
+_This table is rebuilt automatically by `add_songs.py`._
+
+## Adding songs (automatic, recommended)
+
+```bash
+cd ~/music-button-pi && git pull
+python3 add_songs.py
+```
+
+```mermaid
+flowchart LR
+    A[Paste URLs] --> B[Update yt-dlp]
+    B --> C[Read title + length<br/>estimate MB each]
+    C --> D{Fits on SD card?}
+    D -- no --> X[Stop, nothing changed]
+    D -- yes --> E[Ask display name<br/>for each]
+    E --> F[Download songN.mp3]
+    F --> G[Append to config.py<br/>+ README table + song_sources.json]
+    G --> H[git push?]
+    H --> I[Reboot?]
+```
+
+- Paste URLs one per line, empty line to finish (or pass them as arguments).
+- `python3 add_songs.py --check URL1 URL2` only reports size and free space.
+- Size estimate assumes ~160 kbps mp3 and keeps 500 MB free; songs that fail to download are skipped.
+- `config.py.bak` holds the previous config.
+
+## Adding a new song (manual)
 
 ```mermaid
 flowchart LR
