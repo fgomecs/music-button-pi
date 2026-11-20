@@ -20,6 +20,36 @@ flowchart TD
     I & J & K --> F
 ```
 
+## Web portal
+
+Open **http://tiagosmusicbox.local:8080** from any phone or computer on the home Wi-Fi.
+
+- **Now playing**: live mirror of the OLED screen (fish animation, song name) and the 8 LEDs, elapsed time
+- **Controls**: Next (same as the button), Stop, ▶ any song in the list, Restart player
+- **Storage**: song count, library size, free space, and how many more fit at 1 / 2 / 5 / 10 / 15 / 20 MB each
+- **Add songs & stories**: paste `URL Name` rows → *Check size & space* → edit names → *Download & add* (updates config, README, GitHub, restarts the player)
+
+```mermaid
+flowchart LR
+    subgraph PI[Raspberry Pi]
+        BTN[Button] --> PS[play_song.py]
+        PS --> OLED[OLED] & LEDS[LEDs] & MPV[mpv audio]
+        PS -- "state.json + oled.png<br/>(/dev/shm, RAM)" --> PO[portal.py :8080]
+        PO -- "cmd: next / stop / play N" --> PS
+        PO --> AS[add_songs.py engine]
+        AS --> YT[yt-dlp + deno] --> MP3[songN.mp3]
+        AS --> CFG[config.py + README + song_sources.json] --> GH[(GitHub)]
+    end
+    PHONE[Phone / laptop browser] <--> PO
+```
+
+**Install once** (starts now and at every boot):
+```bash
+cd ~/music-button-pi && git pull
+python3 portal.py --install
+```
+No extra packages needed (Python standard library only). No password: anyone on your Wi-Fi can open it.
+
 ## Wiring
 
 ```mermaid
@@ -65,7 +95,11 @@ Each LED: GPIO → LED → resistor → GND. While a song plays, a light wave ru
 | File | Purpose |
 |---|---|
 | `config.py` | **The only file to edit for songs.** `BUTTON_PIN`, `SONGS` (file paths, play order), `SONG_NAMES` (OLED text, same order) |
-| `play_song.py` | Main loop: button → mpv + OLED + LEDs |
+| `play_song.py` | Main loop: button / portal command → mpv + OLED + LEDs; publishes live state |
+| `portal.py` | Web portal on port 8080 (`--install` adds it to crontab) |
+| `musicstate.py` | Shares now-playing, OLED frame and LED state between player and portal |
+| `add_songs.py` | Add songs/stories in bulk + library/space report (CLI, also used by the portal) |
+| `song_sources.json` | YouTube URL of each song file (used to skip duplicates) |
 | `animations.py` | OLED: fish splash, welcome, song name, goodbye |
 | `led_spectrum.py` | LED setup and spectrum animation |
 | `oled_animations.py`, `tiagomyson_animation.py` | Extra OLED animations |
@@ -121,7 +155,10 @@ flowchart LR
   https://www.youtube.com/watch?v=def456 | Soy un Pez!
   ```
   `|`, comma or tab between URL and name also work. Lines without a name get asked later.
-- `python3 add_songs.py --check URL1 URL2` only reports size and free space.
+- `python3 add_songs.py --list` shows the library with sizes, free space and how many more fit at 1–20 MB each.
+- `python3 add_songs.py --check` reports size and fit for pasted rows without changing anything.
+- URLs already in the library are skipped automatically.
+- At the end it can restart the player directly (no reboot needed).
 - Size estimate assumes ~160 kbps mp3 and keeps 500 MB free; songs that fail to download are skipped.
 - `config.py.bak` holds the previous config.
 
@@ -165,6 +202,7 @@ flowchart LR
 | `This video is not available` + JS runtime warning | Do steps 1–2 above (deno + `yt-dlp[default]`) |
 | Name on screen ≠ song playing | `SONGS` and `SONG_NAMES` out of sync, or a local copy in `play_song.py` |
 | No sound | `pactl set-default-sink alsa_output.platform-bcm2835_audio.stereo-fallback` |
+| Portal won't open | `pgrep -f portal.py` · `tail portal.log` · rerun `python3 portal.py --install` |
 | Nothing at boot | `crontab -l` should show `@reboot /home/tiago/music-button-pi/start_music_player.sh`; check `music_player.log` |
 | `git push` → Permission denied (publickey) | Add `~/.ssh/id_ed25519.pub` at github.com/settings/keys |
 
