@@ -13,7 +13,12 @@ SONGS = [
     "/home/tiago/music-button-pi/song4.mp3",
     "/home/tiago/music-button-pi/song5.mp3",
     "/home/tiago/music-button-pi/song.mp3",
-    "/home/tiago/music-button-pi/song12.mp3"
+    "/home/tiago/music-button-pi/song12.mp3",
+    "/home/tiago/music-button-pi/song13.mp3",
+    "/home/tiago/music-button-pi/song14.mp3",
+    "/home/tiago/music-button-pi/song15.mp3",
+    "/home/tiago/music-button-pi/song16.mp3",
+    "/home/tiago/music-button-pi/song17.mp3",
 ]
 
 SONG_NAMES = [
@@ -28,5 +33,10 @@ SONG_NAMES = [
     "La Patita",
     "Soy un Pez!",
     "El Chorrito",
-    "Daniel Otono"
+    "Daniel Otono",
+    "Sun Thief",
+    "Snow Thief",
+    "Pumpkin Thief",
+    "Leaf Thief",
+    "Dont Touch that Flower",
 ]

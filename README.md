@@ -91,6 +91,11 @@ Songs (`song*.mp3`) are **not** in the repo (copyrighted audio). Re-download the
 | 10 | song5.mp3 | Soy un Pez! |  |
 | 11 | song.mp3 | El Chorrito | https://www.youtube.com/watch?v=l82wUVuzegY |
 | 12 | song12.mp3 | Daniel Otono | https://www.youtube.com/watch?v=5x5fwwxps3M |
+| 13 | song13.mp3 | Sun Thief | https://www.youtube.com/watch?v=XOMu1TjtKcg |
+| 14 | song14.mp3 | Snow Thief | https://www.youtube.com/watch?v=wCoo8oYT6Hg |
+| 15 | song15.mp3 | Pumpkin Thief | https://www.youtube.com/watch?v=tcUcHymN1hE |
+| 16 | song16.mp3 | Leaf Thief | https://www.youtube.com/watch?v=F22td-WJpX4 |
+| 17 | song17.mp3 | Dont Touch that Flower | https://www.youtube.com/watch?v=C7a7XgxTtn8 |
 <!-- SONGS:END -->
 
 _This table is rebuilt automatically by `add_songs.py`._
