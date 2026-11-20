@@ -1,0 +1,9 @@
+*.mp3
+*.webm
+*.log
+*.bak
+*.bak2
+*.bkup
+*.swp
+.*.swp
+__pycache__/

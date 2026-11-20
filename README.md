@@ -1,304 +1,123 @@
-### Raspberry Pi 3 Music Button Project Summary
-- **Goal**: Play "https://www.youtube.com/watch?v=l82wUVuzegY" through the headphone jack when my son presses a button on a breadboard.
-- **Hardware**: Raspberry Pi 3, breadboard, push button, 10kΩ resistor, jumper wires, headphones.
-- **Date**: April 2025
+# 🎵 Tiago's Music Button (Raspberry Pi 3)
 
-#### 1. Installed Raspberry Pi OS
-- Installed Raspberry Pi OS (Bookworm-based) on a 32GB SD card.
-- Fresh install with `mpv 0.35.1` and basic audio tools pre-installed.
-- Verified by booting and logging in as `tiago@tiagosmusicbox`.
+A kid-friendly music box. Press the big button → a song plays through the headphone jack, its name shows on an OLED screen, and 8 LEDs dance like a spectrum meter. Each press skips to the next song.
 
-#### 2. Updated and Upgraded the System
-- Ran:
-  ```
-  sudo apt update
-  sudo apt upgrade -y
-  sudo apt full-upgrade -y
-  sudo apt autoremove -y
-  sudo apt autoclean
-  ```
-- Upgraded 189 packages to ensure stability and compatibility.
+## How it works
 
-#### 3. Set Up Virtual Environment for yt-dlp
-- Installed `python3-venv`:
-  ```
-  sudo apt install python3-venv -y
-  ```
-- Created and activated virtual environment:
-  ```
-  python3 -m venv ~/yt-dlp-venv
-  source ~/yt-dlp-venv/bin/activate
-  ```
-- Purpose: Isolated `yt-dlp` installation to avoid system Python conflicts.
+```mermaid
+flowchart TD
+    A[Pi boots] --> B[cron @reboot]
+    B --> C[start_music_player.sh]
+    C --> D["play_song.py (venv python)<br/>logs → music_player.log"]
+    D --> E[Fish splash screen + welcome on OLED]
+    E --> F{Button pressed?}
+    F -- no --> F
+    F -- yes --> G[Kill current mpv + stop LEDs]
+    G --> H[Next index in SONGS<br/>first press = song 1]
+    H --> I[mpv plays mp3]
+    H --> J[OLED shows SONG_NAMES]
+    H --> K[LED spectrum animation]
+    I & J & K --> F
+```
 
-#### 4. Installed mpv and yt-dlp, Configured Audio
-- **mpv**: Confirmed pre-installed `0.35.1` (`mpv --version`), reinstalled if needed:
-  ```
-  sudo apt install mpv -y
-  ```
-- **yt-dlp**:
-  - Initial attempt: `sudo apt install yt-dlp -y` (got outdated `2023.03.04-1`).
-  - Installed latest version in virtual environment:
-    ```
-    source ~/yt-dlp-venv/bin/activate
-    pip install -U yt-dlp
-    deactivate
-    ```
-  - Verified: `~/yt-dlp-venv/bin/yt-dlp --version`.
-- Configured `mpv`:
-  ```
-  nano ~/.config/mpv/mpv.conf
-  ```
-  Added:
-  ```
-  script-opts=ytdl_hook-ytdl_path=/home/tiago/yt-dlp-venv/bin/yt-dlp
-  ytdl-format=bestaudio
-  ```
-- Tested audio:
-  ```
-  mpv --no-video "https://www.youtube.com/watch?v=l82wUVuzegY"
-  ```
-- Fixed headphone output:
-  ```
-  pactl set-default-sink alsa_output.platform-bcm2835_audio.stereo-fallback
-  pactl set-sink-volume alsa_output.platform-bcm2835_audio.stereo-fallback 100%
-  pactl set-sink-mute alsa_output.platform-bcm2835_audio.stereo-fallback 0
-  ```
-- Result: Song played through headphone jack.
+## Wiring
 
-#### 5. Wired and Tested the Button
-- **Wiring**:
-  - Button: GPIO 18 (pin 12) to 3.3V (pin 1).
-  - 10kΩ pull-down resistor: GPIO 18 to GND (pin 6).
-- **Test Script** (`button_test.py`):
-  ```python
-  import RPi.GPIO as GPIO
-  import time
+```mermaid
+flowchart LR
+    subgraph PI[Raspberry Pi 3]
+        P1["Pin 1 · 3.3V"]
+        P3["Pin 3 · GPIO2 SDA"]
+        P5["Pin 5 · GPIO3 SCL"]
+        P6["Pin 6 · GND"]
+        P12["Pin 12 · GPIO18"]
+        PL["LED GPIOs<br/>(LED_PINS in led_spectrum.py)"]
+        JACK[3.5mm headphone jack]
+    end
+    BTN[Push button] --- P1
+    BTN --- P12
+    R[10kΩ pull-down] --- P12
+    R --- P6
+    OLED["SSD1306 OLED 128x64<br/>I2C addr 0x3C"] --- P3
+    OLED --- P5
+    OLED --- P1
+    OLED --- P6
+    PL --> LEDS["8 LEDs: 4 green · 2 yellow · 2 red<br/>(each with resistor to GND)"]
+    JACK --> HP[Headphones]
+```
 
-  GPIO.setmode(GPIO.BCM)
-  BUTTON_PIN = 18
-  GPIO.setup(BUTTON_PIN, GPIO.IN, pull_up_down=GPIO.PUD_DOWN)
+## Files
 
-  print("Press the button (Ctrl+C to exit)...")
-  try:
-      while True:
-          if GPIO.input(BUTTON_PIN) == GPIO.HIGH:
-              print("Button pressed!")
-              time.sleep(0.2)
-          time.sleep(0.1)
-  except KeyboardInterrupt:
-      print("Exiting...")
-  finally:
-      GPIO.cleanup()
-  ```
-- Installed GPIO library: `sudo apt install python3-rpi.gpio -y`.
-- Ran: `python3 button_test.py`.
-- Result: Button press detected successfully.
+| File | Purpose |
+|---|---|
+| `config.py` | **The only file to edit for songs.** `BUTTON_PIN`, `SONGS` (file paths, play order), `SONG_NAMES` (OLED text, same order) |
+| `play_song.py` | Main loop: button → mpv + OLED + LEDs |
+| `animations.py` | OLED: fish splash, welcome, song name, goodbye |
+| `led_spectrum.py` | LED setup and spectrum animation |
+| `oled_animations.py`, `tiagomyson_animation.py` | Extra OLED animations |
+| `start_music_player.sh` | Launcher called by cron at boot |
+| `test_*.py`, `button_test.py` | Hardware test scripts |
 
-#### 6. Created and Automated the Song Playback Script (Streaming Version)
-- **Script** (`play_song.py`):
-  ```python
-  import RPi.GPIO as GPIO
-  import subprocess
-  import time
+Songs (`song*.mp3`) are **not** in the repo (copyrighted audio). Re-download them with the steps below.
 
-  GPIO.setmode(GPIO.BCM)
-  BUTTON_PIN = 18
-  GPIO.setup(BUTTON_PIN, GPIO.IN, pull_up_down=GPIO.PUD_DOWN)
-  SONG_URL = "https://www.youtube.com/watch?v=l82wUVuzegY"
+## Song list (play order)
 
-  print("Press the button to play the song (Ctrl+C to exit)...")
-  try:
-      while True:
-          if GPIO.input(BUTTON_PIN) == GPIO.HIGH:
-              print("Button pressed! Playing song...")
-              subprocess.run(["mpv", "--no-video", SONG_URL])
-              print("Song finished.")
-              time.sleep(0.2)
-          time.sleep(0.1)
-  except KeyboardInterrupt:
-      print("Exiting...")
-  finally:
-      GPIO.cleanup()
-  ```
-- **Autostart**:
-  - Edited crontab: `crontab -e`.
-  - Added: `@reboot /usr/bin/python3 /home/tiago/play_song.py`.
-- Result: Button press streamed the song on boot.
+| # | File | Name |
+|---|---|---|
+| 1 | song11.mp3 | Capi Miau! |
+| 2 | song10.mp3 | Cacho Muchacho |
+| 3 | song9.mp3 | Abuelito dime tu |
+| 4 | song6.mp3 | Las Vocales |
+| 5 | song7.mp3 | I'm an Octupus |
+| 6 | song8.mp3 | This little light |
+| 7 | song2.mp3 | Here Comes Santa |
+| 8 | song3.mp3 | Caminito de la Escuela |
+| 9 | song4.mp3 | La Patita |
+| 10 | song5.mp3 | Soy un Pez! |
+| 11 | song.mp3 | El Chorrito |
+| 12 | song12.mp3 | Daniel Otono — https://www.youtube.com/watch?v=5x5fwwxps3M |
 
-#### 7. Downloaded the Song and Modified the Script
-- **Downloaded the Song**:
-  - Used `yt-dlp` to save the audio locally:
-    ```
-    source ~/yt-dlp-venv/bin/activate
-    ~/yt-dlp-venv/bin/yt-dlp -x --audio-format mp3 -o "/home/tiago/song.mp3" "https://www.youtube.com/watch?v=l82wUVuzegY"
-    deactivate
-    ```
-  - Result: Saved `song.mp3` in `/home/tiago/`.
-- **Modified Script** (`play_song.py`):
-  - Updated to play the local file instead of streaming:
-    ```python
-    import RPi.GPIO as GPIO
-    import subprocess
-    import time
+## Adding a new song
 
-    GPIO.setmode(GPIO.BCM)
-    BUTTON_PIN = 18
-    GPIO.setup(BUTTON_PIN, GPIO.IN, pull_up_down=GPIO.PUD_DOWN)
-    SONG_PATH = "/home/tiago/song.mp3"
+```mermaid
+flowchart LR
+    A[YouTube URL] --> B[yt-dlp + deno<br/>→ songN.mp3]
+    B --> C[config.py<br/>append to SONGS + SONG_NAMES]
+    C --> D[check counts match]
+    D --> E[sudo reboot]
+```
 
-    print("Press the button to play the song (Ctrl+C to exit)...")
-    try:
-        while True:
-            if GPIO.input(BUTTON_PIN) == GPIO.HIGH:
-                print("Button pressed! Playing song...")
-                subprocess.run(["mpv", SONG_PATH])
-                print("Song finished.")
-                time.sleep(0.2)
-            time.sleep(0.1)
-    except KeyboardInterrupt:
-        print("Exiting...")
-    finally:
-        GPIO.cleanup()
-    ```
-- **Updated Autostart**:
-  - Ensured crontab still points to the modified script: `@reboot /usr/bin/python3 /home/tiago/play_song.py`.
-- Result: Button press now plays the local `song.mp3` file, reducing latency and eliminating internet dependency.
+1. **One-time setup** (since late 2025 YouTube requires a JS runtime):
+   ```bash
+   sudo apt install -y unzip
+   curl -fsSL https://deno.land/install.sh | sh
+   ```
+2. **Update yt-dlp + challenge solver:**
+   ```bash
+   ~/yt-dlp-venv/bin/pip install -U "yt-dlp[default]"
+   ```
+3. **Download** (pick the next free number):
+   ```bash
+   export PATH="$HOME/.deno/bin:$PATH"
+   ~/yt-dlp-venv/bin/yt-dlp -x --audio-format mp3 -o "/home/tiago/music-button-pi/songN.mp3" "YOUTUBE_URL"
+   ```
+4. **Edit `config.py`**: add the path to the end of `SONGS` and the name to the end of `SONG_NAMES` (put a comma on the previous last line).
+5. **Check:**
+   ```bash
+   python3 -c "import config; print(len(config.SONGS), len(config.SONG_NAMES))"   # must match
+   ```
+6. `sudo reboot`
 
-#### Additional Tools Installed
-- `ffmpeg`: `sudo apt install ffmpeg -y`.
-- `pipewire-audio-client-libraries`: `sudo apt install pipewire-audio-client-libraries -y`.
-- `alsa-utils`: `sudo apt install alsa-utils -y`.
-- `mlocate`: `sudo apt install mlocate -y`.
+⚠️ Never define `SONGS` / `SONG_NAMES` inside `play_song.py`; that overrides `config.py` and mismatches names vs audio.
 
-#### Verification Commands Used
-- `mpv --version`
-- `source ~/yt-dlp-venv/bin/activate; yt-dlp --version; deactivate`
-- `python3 -c "import RPi.GPIO; print(RPi.GPIO.VERSION)"`
-- `ffmpeg -version`
-- `pw-play --version`
-- `aplay --version`
+## Troubleshooting
 
----
+| Symptom | Fix |
+|---|---|
+| `This video is not available` + JS runtime warning | Do steps 1–2 above (deno + `yt-dlp[default]`) |
+| Name on screen ≠ song playing | `SONGS` and `SONG_NAMES` out of sync, or a local copy in `play_song.py` |
+| No sound | `pactl set-default-sink alsa_output.platform-bcm2835_audio.stereo-fallback` |
+| Nothing at boot | `crontab -l` should show `@reboot /home/tiago/music-button-pi/start_music_player.sh`; check `music_player.log` |
 
-### Current Status
-- The project now uses a locally stored `song.mp3` instead of streaming, triggered by the button press via GPIO 18.
-- It autostarts on boot, plays through the headphone jack, and is fully functional for your son to use.
-- This update reflects downloading the song and modifying `play_song.py` as you mentioned.
+## Software
 
-Does this match what you’ve done? If I got the timing or details of the download step wrong, let me know, and I’ll adjust it. Also, since you asked about removing the desktop overhead earlier, do you want to revisit that optimization now that the core project is working?
-=======
-# Raspberry Pi 3 Music Button Project
-
-**Goal**: Play "https://www.youtube.com/watch?v=l82wUVuzegY" via headphone jack when my son presses a button on a breadboard.  
-**Hardware**: Raspberry Pi 3, breadboard, push button, 10kΩ resistor, jumper wires, headphones.  
-**Date**: April 2025  
-
----
-
-# 1. Installed Raspberry Pi OS
-- **Action**: Installed Raspberry Pi OS (Bookworm-based) on a 32GB SD card.
-- **Details**: Fresh install, assumed pre-installed with `mpv 0.35.1` and basic audio tools from initial checks.
-- **Verification**: Booted and logged in as `tiago@tiagosmusicbox`.
-
-# 2. Updated and Upgraded the System
-- **Commands**:
-
-sudo apt update
-sudo apt upgrade -y
-sudo apt full-upgrade -y
-sudo apt autoremove -y
-sudo apt autoclean
-
-- **Details**: Refreshed package lists (189 packages upgraded), updated all software to ensure compatibility and stability.
-- **Purpose**: Fixed potential package issues (e.g., broken `youtube-dl` installs).
-
-# 3. Created a Virtual Environment for yt-dlp
-- **Commands**:
-
-sudo apt install python3-venv -y
-python3 -m venv ~/yt-dlp-venv
-source ~/yt-dlp-venv/bin/activate
-
-- **Details**: Created `~/yt-dlp-venv` to bypass PEP 668 restrictions on system Python.
-- **Purpose**: Allowed installing the latest `yt-dlp` without breaking system packages.
-
-# 4. Installed mpv and yt-dlp and Tested Audio
-- **mpv Installation**:
-- Command: `sudo apt install mpv -y`
-- Version: Confirmed `0.35.1` (pre-installed, verified with `mpv --version`).
-- Purpose: Plays YouTube audio streams.
-- **yt-dlp Installation**:
-- Initial Attempt: `sudo apt install yt-dlp -y` (installed `2023.03.04-1`, outdated).
-- Final Install:
-
-source ~/yt-dlp-venv/bin/activate
-pip install -U yt-dlp
-deactivate
-
-- Version: Latest (e.g., `2025.x.x`), checked with `~/yt-dlp-venv/bin/yt-dlp --version`.
-- Purpose: Downloads YouTube streams for `mpv`.
-- **Testing**:
-- Configured `mpv`:
-
-nano ~/.config/mpv/mpv.conf
-
-Added:
-
-script-opts=ytdl_hook-ytdl_path=/home/tiago/yt-dlp-venv/bin/yt-dlp
-ytdl-format=bestaudio
-
-- Tested: `mpv --no-video "https://www.youtube.com/watch?v=l82wUVuzegY"`
-- Audio Fix: Set headphone jack as default sink and boosted volume:
-
-pactl set-default-sink alsa_output.platform-bcm2835_audio.stereo-fallback
-pactl set-sink-volume alsa_output.platform-bcm2835_audio.stereo-fallback 100%
-pactl set-sink-mute alsa_output.platform-bcm2835_audio.stereo-fallback 0
-
-- Result: Song played through headphone jack.
-
-# 5. Created Wiring for the Button and Tested
-- **Wiring**:
-- Button: Connected to GPIO 18 (pin 12) and 3.3V (pin 1).
-- Pull-down Resistor: 10kΩ from GPIO 18 to GND (pin 6).
-- Diagram:
-
-Pi 3.3V (pin 1) ---- Button ---- GPIO 18 (pin 12)
-|
-10kΩ Resistor
-|
-GND (pin 6)
-
-- **Test Script**:
-- Installed GPIO library: `sudo apt install python3-rpi.gpio -y`
-- Created `button_test.py`:
-```python
-import RPi.GPIO as GPIO
-import time
-
-GPIO.setmode(GPIO.BCM)
-BUTTON_PIN = 18
-GPIO.setup(BUTTON_PIN, GPIO.IN, pull_up_down=GPIO.PUD_DOWN)
-
-print("Press the button (Ctrl+C to exit)...")
-try:
-    while True:
-        if GPIO.input(BUTTON_PIN) == GPIO.HIGH:
-            print("Button pressed!")
-            time.sleep(0.2)
-        time.sleep(0.1)
-except KeyboardInterrupt:
-    print("Exiting...")
-finally:
-    GPIO.cleanup()
-
-
->>>>>>> d383860 (Updated README with detailed project summary)
-
-## Song Skipping
-- Press button to play or skip to the next song instantly.
-- Songs: `song.mp3`, `song2.mp3`, `song3.mp3`, `song4.mp3`, `song5.mp3`.
-- Master volume set to 80%:
-  ```bash
-  amixer set Master 80%
-  sudo alsactl store
+Raspberry Pi OS Bookworm (64-bit) · Python venv at `~/yt-dlp-venv` (runs the player too: RPi.GPIO, luma.oled, yt-dlp) · mpv · ffmpeg · deno
