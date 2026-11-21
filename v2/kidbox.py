@@ -395,7 +395,9 @@ class KidBox:
     def __init__(self):
         os.makedirs(THUMB_DIR, exist_ok=True)
         pygame.init()
-        flags = 0 if os.environ.get("KIDBOX_WINDOW") else pygame.FULLSCREEN
+        # SCALED: always draw on an 800x480 canvas and let SDL stretch it to whatever
+        # the display really is (the 4.3" panel is 800x480; a headless/HDMI desktop is bigger)
+        flags = pygame.SCALED if os.environ.get("KIDBOX_WINDOW") else (pygame.FULLSCREEN | pygame.SCALED)
         self.screen = pygame.display.set_mode((W, H), flags)
         pygame.display.set_caption("KidBox")
         pygame.mouse.set_visible(bool(os.environ.get("KIDBOX_WINDOW")))
