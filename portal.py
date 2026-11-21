@@ -132,6 +132,22 @@ def restart_player():
 V2_SETTINGS = os.path.join(HERE, "v2", "settings.json")
 
 
+def make_thumb(name):
+    """Small copy for the portal grid (full photos are 2-3 MB). Falls back to the original."""
+    src = os.path.join(PHOTO_DIR, name)
+    dst_dir = os.path.join(PHOTO_DIR, ".thumbs")
+    dst = os.path.join(dst_dir, name)
+    try:
+        from PIL import Image
+        os.makedirs(dst_dir, exist_ok=True)
+        with Image.open(src) as im:
+            im.thumbnail((352, 264))
+            im.convert("RGB").save(dst, "JPEG", quality=80)
+        return dst
+    except Exception:
+        return src
+
+
 def v2_settings():
     st = {"lang": "en", "video_unlocked": False}
     try:
@@ -187,7 +203,7 @@ class Handler(BaseHTTPRequestHandler):
             folder = PHOTO_DIR if path.startswith("/photo/") else os.path.join(PHOTO_DIR, ".thumbs")
             fp = os.path.join(folder, name)
             if not os.path.exists(fp) and path.startswith("/thumb/"):
-                fp = os.path.join(PHOTO_DIR, name)
+                fp = make_thumb(name)
             try:
                 with open(fp, "rb") as f:
                     self.send(200, f.read(), "image/jpeg")
