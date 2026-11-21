@@ -16,7 +16,7 @@ cd "$P" && git pull --no-edit -q || echo "   (git pull skipped)"
 
 step "2/7 Installing packages"
 sudo apt-get update -qq
-sudo apt-get install -y -qq git mpv ffmpeg python3-pygame python3-venv python3-pip unzip
+sudo apt-get install -y -qq git mpv ffmpeg python3-pygame python3-pil python3-venv python3-pip unzip
 sudo apt-get install -y -qq --no-install-recommends python3-picamera2
 
 step "3/7 yt-dlp + deno (for adding songs)"
