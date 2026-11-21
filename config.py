@@ -19,6 +19,9 @@ SONGS = [
     "/home/tiago/music-button-pi/song15.mp3",
     "/home/tiago/music-button-pi/song16.mp3",
     "/home/tiago/music-button-pi/song17.mp3",
+    "/home/tiago/music-button-pi/song18.mp3",
+    "/home/tiago/music-button-pi/song19.mp3",
+    "/home/tiago/music-button-pi/song20.mp3",
 ]
 
 SONG_NAMES = [
@@ -39,4 +42,7 @@ SONG_NAMES = [
     "Pumpkin Thief",
     "Leaf Thief",
     "Dont Touch that Flower",
+    "Daniel Margaret",
+    "Daniel Picnic",
+    "Daniel Escuela",
 ]

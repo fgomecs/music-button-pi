@@ -130,6 +130,9 @@ Songs (`song*.mp3`) are **not** in the repo (copyrighted audio). Re-download the
 | 15 | song15.mp3 | Pumpkin Thief | https://www.youtube.com/watch?v=tcUcHymN1hE |
 | 16 | song16.mp3 | Leaf Thief | https://www.youtube.com/watch?v=F22td-WJpX4 |
 | 17 | song17.mp3 | Dont Touch that Flower | https://www.youtube.com/watch?v=C7a7XgxTtn8 |
+| 18 | song18.mp3 | Daniel Margaret | https://www.youtube.com/watch?v=KXf9Y7_S-7k |
+| 19 | song19.mp3 | Daniel Picnic | https://www.youtube.com/watch?v=SA2fFhdydDE |
+| 20 | song20.mp3 | Daniel Escuela | https://www.youtube.com/watch?v=RUZmqgIELvo |
 <!-- SONGS:END -->
 
 _This table is rebuilt automatically by `add_songs.py`._
