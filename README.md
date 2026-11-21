@@ -20,6 +20,34 @@ flowchart TD
     I & J & K --> F
 ```
 
+## V2: handheld touch version (in progress)
+
+Pi 3 + Waveshare 4.3" DSI capacitive touch (800×480) + PiSugar S Plus 5000 mAh battery + Pi camera. Touch only, no buttons. Lives in `v2/`; V1 is untouched.
+
+```mermaid
+flowchart LR
+    HOME[Home] --> MUSIC[🎵 Music<br/>playlist · ⏮ ⏯ ⏭ · animations]
+    HOME --> CAM[📷 Camera<br/>live viewfinder · big shutter]
+    HOME --> PH[🖼 Photos<br/>grid · swipe · long-press delete]
+    CAM --> PH
+    PORTAL[Web portal :8080] -. now playing · photos · language .- MUSIC
+```
+
+**Stack (back to front):** screen → standoffs → PiSugar → Pi 3 (camera ribbon on CSI, display ribbon on DSI). Charge via the PiSugar's USB port, never the Pi's.
+
+**Setup (once):**
+```bash
+git clone https://github.com/fgomecs/music-button-pi.git ~/music-button-pi   # if not cloned yet
+cd ~/music-button-pi && git pull && bash v2/setup.sh
+sudo reboot
+```
+`setup.sh` installs packages, enables the 4.3" DSI screen overlay, copies the songs from V1 over Wi-Fi (read-only), starts the kids app at boot, and installs the portal.
+
+- Video is locked: audio-only downloads and playback (`v2/settings.json` → `video_unlocked`).
+- Photos: `~/Pictures/kidbox` (download/delete from the portal's Photos card).
+- Language: English/Español switch in the portal.
+- Test on a PC: `KIDBOX_WINDOW=1 python3 v2/kidbox.py`
+
 ## Web portal
 
 Open **http://tiagosmusicbox.local:8080** from any phone or computer on the home Wi-Fi.
@@ -98,6 +126,8 @@ Each LED: GPIO → LED → resistor → GND. While a song plays, a light wave ru
 | `play_song.py` | Main loop: button / portal command → mpv + OLED + LEDs; publishes live state |
 | `portal.py` | Web portal on port 8080 (`--install` adds it to crontab) |
 | `musicstate.py` | Shares now-playing, OLED frame and LED state between player and portal |
+| `v2/kidbox.py` | V2 touch app (music, camera, photos) |
+| `v2/setup.sh` | V2 one-time setup |
 | `add_songs.py` | Add songs/stories in bulk + library/space report (CLI, also used by the portal) |
 | `song_sources.json` | YouTube URL of each song file (used to skip duplicates) |
 | `animations.py` | OLED: fish splash, welcome, song name, goodbye |

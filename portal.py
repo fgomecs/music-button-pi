@@ -111,7 +111,14 @@ def player_status():
     return st
 
 
+V2 = os.path.exists(os.path.join(HERE, "v2", ".enabled"))
+PHOTO_DIR = os.path.expanduser("~/Pictures/kidbox")
+
+
 def restart_player():
+    if V2:                       # V2 app reloads its song list without restarting
+        musicstate.send_cmd("reload")
+        return
     subprocess.run(["pkill", "-f", "play_song.py"])
     for _ in range(30):
         if subprocess.run(["pgrep", "-f", "play_song.py"], stdout=subprocess.DEVNULL).returncode:
@@ -120,6 +127,19 @@ def restart_player():
     subprocess.run(["pkill", "-9", "mpv"])
     subprocess.Popen(["/bin/bash", os.path.join(HERE, "start_music_player.sh")], cwd=HERE,
                      start_new_session=True, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+
+
+V2_SETTINGS = os.path.join(HERE, "v2", "settings.json")
+
+
+def v2_settings():
+    st = {"lang": "en", "video_unlocked": False}
+    try:
+        with open(V2_SETTINGS) as f:
+            st.update(json.load(f))
+    except (FileNotFoundError, ValueError):
+        pass
+    return st
 
 
 # ---------------------------------------------------------------- http
@@ -156,6 +176,23 @@ class Handler(BaseHTTPRequestHandler):
                 self.send(500, {"error": str(e)})
         elif path == "/api/job":
             self.send(200, JOB)
+        elif path == "/api/photos":
+            try:
+                files = sorted((f for f in os.listdir(PHOTO_DIR) if f.lower().endswith(".jpg")), reverse=True)
+            except FileNotFoundError:
+                files = []
+            self.send(200, {"photos": files, "v2": V2, "settings": v2_settings()})
+        elif path.startswith("/photo/") or path.startswith("/thumb/"):
+            name = os.path.basename(path.split("/", 2)[2])
+            folder = PHOTO_DIR if path.startswith("/photo/") else os.path.join(PHOTO_DIR, ".thumbs")
+            fp = os.path.join(folder, name)
+            if not os.path.exists(fp) and path.startswith("/thumb/"):
+                fp = os.path.join(PHOTO_DIR, name)
+            try:
+                with open(fp, "rb") as f:
+                    self.send(200, f.read(), "image/jpeg")
+            except (FileNotFoundError, IsADirectoryError):
+                self.send(404, {"error": "no such photo"})
         elif path == "/oled.png":
             try:
                 with open(musicstate.OLED, "rb") as f:
@@ -177,6 +214,22 @@ class Handler(BaseHTTPRequestHandler):
                 musicstate.send_cmd(cmd)
                 return self.send(200, {"ok": True})
             return self.send(400, {"error": "bad cmd"})
+        if path == "/api/photos/delete":
+            name = os.path.basename(str(data.get("name", "")))
+            for fp in (os.path.join(PHOTO_DIR, name), os.path.join(PHOTO_DIR, ".thumbs", name)):
+                try:
+                    os.remove(fp)
+                except FileNotFoundError:
+                    pass
+            return self.send(200, {"ok": True})
+        if path == "/api/settings":
+            st = v2_settings()
+            if data.get("lang") in ("en", "es"):
+                st["lang"] = data["lang"]
+            with open(V2_SETTINGS, "w") as f:
+                json.dump(st, f, indent=2)
+            musicstate.send_cmd("reload")
+            return self.send(200, {"ok": True, "settings": st})
         if path == "/api/restart":
             threading.Thread(target=restart_player, daemon=True).start()
             return self.send(200, {"ok": True})
@@ -218,6 +271,12 @@ main{display:grid;grid-template-columns:minmax(0,1.05fr) minmax(0,1fr);gap:18px;
 .card h2{margin:0 0 12px;font-size:13px;text-transform:uppercase;letter-spacing:.08em;color:var(--mut);font-weight:600}
 .now{display:flex;gap:22px;align-items:center;flex-wrap:wrap}
 .oled{background:#000;border-radius:10px;padding:10px;border:2px solid #2a2f4d;box-shadow:inset 0 0 18px rgba(91,140,255,.12)}
+.oled.color img{filter:none;image-rendering:auto;width:400px}
+.photos{display:grid;grid-template-columns:repeat(auto-fill,minmax(120px,1fr));gap:10px;max-height:430px;overflow:auto}
+.photos figure{margin:0;background:#1d2238;border-radius:10px;overflow:hidden;position:relative}
+.photos img{width:100%;display:block;aspect-ratio:4/3;object-fit:cover;cursor:pointer}
+.photos figcaption{display:flex;justify-content:space-between;align-items:center;padding:5px 8px;font-size:12px;color:var(--mut)}
+.photos a{color:var(--acc);text-decoration:none}
 .oled img{display:block;width:384px;max-width:100%;height:auto;image-rendering:pixelated;filter:drop-shadow(0 0 2px rgba(140,190,255,.7)) sepia(1) hue-rotate(170deg) saturate(3) brightness(1.15)}
 .title{font-size:22px;font-weight:650;margin:2px 0}.sub{color:var(--mut);font-size:13px}
 .leds{display:flex;gap:9px;margin:16px 0 4px}.led{width:20px;height:20px;border-radius:50%;opacity:.18;transition:opacity .08s,box-shadow .08s}
@@ -292,6 +351,14 @@ label{color:var(--mut);font-size:13px}
   </div>
   <div class="log hide" id="log"></div>
  </section>
+
+ <section class="card full hide" id="photoCard">
+  <h2>Tiago's photos</h2>
+  <div class="row" style="margin:0 0 10px"><span class="sub" id="photoCount"></span>
+   <span style="margin-left:auto" class="sub">Screen language:</span>
+   <button id="langEn" onclick="setLang('en')">English</button><button id="langEs" onclick="setLang('es')">Español</button></div>
+  <div class="photos" id="photos"></div>
+ </section>
 </main>
 <script>
 const $=id=>document.getElementById(id);
@@ -308,6 +375,7 @@ async function tick(){
   $('pill').textContent=p.alive?(p.playing?'▶ playing':'● ready'):'player not running';
   $('pill').className='pill '+(p.alive?'on':'off');
   if(p.oled_v!==lastOled){lastOled=p.oled_v;$('oled').src='/oled.png?v='+p.oled_v;}
+  if(p.screen==='color'){$('oled').parentElement.classList.add('color');$('leds').style.display='none';}
   [...$('leds').children].forEach((d,i)=>d.classList.toggle('on',!!(p.leds||[])[i]));
   $('name').textContent=p.playing?p.name:(p.name?p.name+' (stopped)':'Nothing playing');
   $('pos').textContent=p.index!=null?`#${p.index+1} of ${p.count||'?'}`:'—';
@@ -354,7 +422,17 @@ async function pollJob(){
  }
  if(j.kind==='add'&&j.result){$('bAdd').disabled=false;$('checkOut').classList.add('hide');$('rows').value='';loadLib();}
 }
-loadLib();tick();setInterval(tick,300);setInterval(loadLib,15000);
+async function loadPhotos(){
+ const P=await api('/api/photos');if(!P.v2)return;
+ $('photoCard').classList.remove('hide');
+ $('photoCount').textContent=P.photos.length+' photo'+(P.photos.length===1?'':'s');
+ $('langEn').className=P.settings.lang==='en'?'pri':'';$('langEs').className=P.settings.lang==='es'?'pri':'';
+ $('photos').innerHTML=P.photos.map(f=>{const d=f.slice(4,12),t=f.slice(13,17);
+  return `<figure><img loading="lazy" src="/thumb/${f}" onclick="window.open('/photo/${f}')"><figcaption>${d.slice(4,6)}/${d.slice(6,8)} ${t.slice(0,2)}:${t.slice(2,4)}<span><a href="/photo/${f}" download>⬇</a> &nbsp;<a href="#" onclick="delPhoto('${f}');return false">🗑</a></span></figcaption></figure>`}).join('')||'<span class="sub">No photos yet.</span>';
+}
+async function delPhoto(f){if(confirm('Delete this photo?')){await api('/api/photos/delete',{name:f});loadPhotos();}}
+async function setLang(l){await api('/api/settings',{lang:l});loadPhotos();}
+loadLib();tick();loadPhotos();setInterval(tick,300);setInterval(loadLib,15000);setInterval(loadPhotos,20000);
 </script></body></html>
 """
 

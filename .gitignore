@@ -7,3 +7,6 @@
 *.swp
 .*.swp
 __pycache__/
+v2/settings.json
+v2/.enabled
+v2/*.log

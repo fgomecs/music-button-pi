@@ -396,7 +396,13 @@ def main():
 
 
 def restart_player():
-    """Stop play_song.py and start it again via start_music_player.sh (no reboot)."""
+    """Stop play_song.py and start it again via start_music_player.sh (no reboot).
+    On V2 (v2/.enabled exists) the kids app just reloads its song list."""
+    if os.path.exists(os.path.join(PROJECT, "v2", ".enabled")):
+        import musicstate
+        musicstate.send_cmd("reload")
+        print("V2 app reloaded the song list.")
+        return
     subprocess.run(["pkill", "-f", "play_song.py"])
     import time
     time.sleep(2)
