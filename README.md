@@ -6,6 +6,24 @@ A kid-friendly music box. Press the big button → a song plays through the head
 
 _Full pin tables: see [Wiring](#wiring)._
 
+## Screenshots
+
+_Rendered from the real code (`animations.py`, `portal.py`) with the real song list. Scripts: `docs/src/oled_shots.py`, `docs/src/shoot.py`._
+
+### OLED screen
+
+| Boot | Ready | Playing |
+|---|---|---|
+| <img src="docs/screenshots/oled-1-splash.png" width="260"> | <img src="docs/screenshots/oled-2-ready.png" width="260"> | <img src="docs/screenshots/oled-3-now-playing.png" width="260"> |
+| **Long name** | **Shutdown** | |
+| <img src="docs/screenshots/oled-4-long-name.png" width="260"> | <img src="docs/screenshots/oled-5-goodbye.png" width="260"> | |
+
+### Web portal (http://tiagosmusicbox.local:8080)
+
+| Desktop | Phone |
+|---|---|
+| <img src="docs/screenshots/portal-desktop.png" width="560"> | <img src="docs/screenshots/portal-phone.png" width="200"> |
+
 ## How it works
 
 ```mermaid
