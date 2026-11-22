@@ -2,6 +2,10 @@
 
 A kid-friendly music box. Press the big button → a song plays through the headphone jack, its name shows on an OLED screen, and 8 LEDs dance like a spectrum meter. Each press skips to the next song.
 
+![V1 wiring diagram](docs/wiring-v1.png)
+
+_Full pin tables: see [Wiring](#wiring)._
+
 ## How it works
 
 ```mermaid
@@ -79,8 +83,6 @@ python3 portal.py --install
 No extra packages needed (Python standard library only). No password: anyone on your Wi-Fi can open it.
 
 ## Wiring
-
-![V1 wiring diagram](docs/wiring-v1.png)
 
 _Diagram source: `docs/src/gen_v1.py` (regenerate: `cd docs/src && python3 gen_v1.py ../wiring-v1.svg && rsvg-convert -w 1500 ../wiring-v1.svg -o ../wiring-v1.png`)._
 
