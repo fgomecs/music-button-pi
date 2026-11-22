@@ -80,6 +80,10 @@ No extra packages needed (Python standard library only). No password: anyone on 
 
 ## Wiring
 
+![V1 wiring diagram](docs/wiring-v1.png)
+
+_Diagram source: `docs/src/gen_v1.py` (regenerate: `cd docs/src && python3 gen_v1.py ../wiring-v1.svg && rsvg-convert -w 1500 ../wiring-v1.svg -o ../wiring-v1.png`)._
+
 ```mermaid
 flowchart LR
     subgraph PI[Raspberry Pi 3]
